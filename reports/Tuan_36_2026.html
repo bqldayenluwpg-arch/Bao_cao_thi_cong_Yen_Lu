@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="vi"><head>
+  <meta charset="UTF-8">
+  <title>BÁO CÁO KHỐI LƯỢNG THEO NHÀ THẦU</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- XLSX & Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #0054a6;
+      --primary-light: #e3f4ff;
+      --accent-cyan: #00bcd4;
+      --bg: #f3f7fb;
+      --bg-card: #ffffff;
+      --text: #1b2440;
+      --text-muted: #6b7a99;
+      --border: #d3deee;
+    }
+
+    body.dark-mode {
+      --bg: #050914;
+      --bg-card: #0f172a;
+      --text: #e5f0ff;
+      --text-muted: #7b8caf;
+      --border: #1f2937;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, rgba(0,188,212,0.12), transparent 45%),
+                  radial-gradient(circle at bottom right, rgba(0,84,166,0.12), transparent 45%),
+                  var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 18px 18px 20px;
+      box-shadow: 0 18px 45px rgba(15,23,42,0.22);
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+
+    body.dark-mode .container {
+      background: rgba(15,23,42,0.96);
+      border-color: rgba(30,64,175,0.6);
+    }
+
+    header { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+
+    .header-top {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .title-block { max-width:60%; }
+
+    h1 {
+      margin:0 0 4px;
+      font-size:20px;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      color:var(--primary);
+    }
+    body.dark-mode h1 { color:#60a5fa; }
+
+    .subtitle { font-size:12px; color:var(--text-muted); }
+
+    .meta-row {
+      display:flex;
+      gap:16px;
+      font-size:12px;
+      color:var(--text-muted);
+    }
+    .meta-row span label {
+      font-weight:600;
+      color:var(--text);
+      margin-right:4px;
+    }
+
+    .toolbar {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+      gap:6px;
+      margin-top:4px;
+    }
+
+    .btn {
+      border:1px solid var(--border);
+      background:linear-gradient(135deg, #ffffff, #f3f7ff);
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:11px;
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      cursor:pointer;
+      color:var(--text);
+      box-shadow:0 2px 5px rgba(15,23,42,0.08);
+      transition:all 0.15s ease-out;
+    }
+    .btn:hover { transform:translateY(-1px); box-shadow:0 4px 8px rgba(15,23,42,0.15); }
+    .btn.primary {
+      background:linear-gradient(135deg,#0054a6,#00bcd4);
+      border-color:transparent;
+      color:#fff;
+    }
+    body.dark-mode .btn {
+      background:linear-gradient(135deg,#0f172a,#020617);
+      color:var(--text);
+      border-color:#1f2937;
+    }
+    body.dark-mode .btn.primary {
+      background:linear-gradient(135deg,#2563eb,#0ea5e9);
+    }
+    .btn input[type="file"] { display:none; }
+    .btn-icon { font-size:14px; }
+
+    .tabs-wrapper {
+      margin-top:16px;
+      background:var(--bg-card);
+      border-radius:16px;
+      border:1px solid var(--border);
+      padding:12px;
+      box-shadow:0 4px 12px rgba(15,23,42,0.06);
+    }
+    body.dark-mode .tabs-wrapper {
+      background:linear-gradient(145deg,rgba(15,23,42,0.96),rgba(17,24,39,0.96));
+    }
+
+    .tabs {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      border-bottom:1px solid var(--border);
+      padding-bottom:6px;
+      margin-bottom:10px;
+    }
+    .tab {
+      border:none;
+      background:transparent;
+      padding:6px 12px;
+      font-size:11px;
+      border-radius:999px;
+      cursor:pointer;
+      color:var(--text-muted);
+      position:relative;
+    }
+    .tab::after {
+      content:"";
+      position:absolute;
+      left:14px;
+      right:14px;
+      bottom:-4px;
+      height:2px;
+      border-radius:999px;
+      background:transparent;
+    }
+    .tab.active {
+      background:rgba(0,84,166,0.08);
+      color:var(--primary);
+      font-weight:600;
+    }
+    .tab.active::after {
+      background:linear-gradient(90deg,var(--primary),var(--accent-cyan));
+    }
+
+    .summary-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .summary-card {
+      position:relative;
+      background:linear-gradient(135deg,rgba(0,188,212,0.12),rgba(0,84,166,0.04));
+      border-radius:16px;
+      border:1px solid var(--border);
+      padding:10px 12px 12px;
+      overflow:hidden;
+    }
+    body.dark-mode .summary-card {
+      background:radial-gradient(circle at top left,rgba(37,99,235,0.22),rgba(15,23,42,0.9));
+    }
+    .summary-card::before {
+      content:"";
+      position:absolute;
+      inset:0;
+      background:radial-gradient(circle at top right,rgba(0,188,212,0.25),transparent 55%);
+      pointer-events:none;
+    }
+    .summary-card > * { position:relative; z-index:1; }
+
+    .summary-label {
+      font-size:11px;
+      color:var(--text-muted);
+      margin-bottom:4px;
+      letter-spacing:0.06em;
+      text-transform:uppercase;
+    }
+    .summary-main-value {
+      font-size:20px;
+      font-weight:700;
+      color:var(--primary);
+      margin-bottom:4px;
+    }
+    body.dark-mode .summary-main-value { color:#bfdbfe; }
+    .summary-subtext { font-size:11px; color:var(--text-muted); }
+
+    .card-subtitle {
+      font-size:11px;
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:0.04em;
+      color:var(--text-muted);
+      margin-top:4px;
+      margin-bottom:2px;
+    }
+    .bands-row { margin-top:2px; }
+
+    .details-grid {
+      display:grid;
+      grid-template-columns:minmax(0,1fr);
+      gap:10px;
+      margin-top:4px;
+    }
+
+    .card {
+      background:rgba(255,255,255,0.9);
+      border-radius:14px;
+      border:1px solid var(--border);
+      padding:10px 10px 10px;
+      box-shadow:0 3px 10px rgba(15,23,42,0.06);
+    }
+    body.dark-mode .card {
+      background:rgba(15,23,42,0.94);
+      border-color:#1f2937;
+    }
+
+    .card-title {
+      font-size:12px;
+      font-weight:600;
+      margin-bottom:6px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      color:var(--text);
+    }
+    .card-title span { font-size:11px; font-weight:400; color:var(--text-muted); }
+
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      padding:2px 6px;
+      font-size:10px;
+      border:1px solid rgba(148,163,184,0.7);
+      color:var(--text-muted);
+      gap:4px;
+    }
+    .badge-dot {
+      width:6px; height:6px;
+      border-radius:999px;
+      background:#22c55e;
+    }
+
+    .table-wrapper {
+      margin-top:4px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      overflow:hidden;
+      background:rgba(255,255,255,0.95);
+    }
+    body.dark-mode .table-wrapper { background:rgba(15,23,42,0.98); }
+
+    table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:11px;
+      table-layout:fixed;
+    }
+
+    thead {
+      background:linear-gradient(135deg,#eff4ff,#e0f7ff);
+    }
+    body.dark-mode thead {
+      background:linear-gradient(135deg,#111827,#020617);
+    }
+
+    th, td {
+      padding:4px 6px;
+      border-bottom:1px solid rgba(210,220,235,0.9);
+      text-align:left;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    /* Đặt width cố định cho 8 cột đầu, cột 9 (Ghi chú) sẽ ăn hết phần còn lại */
+    .table-main th:nth-child(1),
+    .table-main td:nth-child(1) { width:60px; }   /* Gói thầu */
+    .table-main th:nth-child(2),
+    .table-main td:nth-child(2) { width:150px; }  /* Hạng mục */
+    .table-main th:nth-child(3),
+    .table-main td:nth-child(3) { width:60px; }   /* Đơn vị */
+    .table-main th:nth-child(4),
+    .table-main td:nth-child(4),
+    .table-main th:nth-child(5),
+    .table-main td:nth-child(5),
+    .table-main th:nth-child(6),
+    .table-main td:nth-child(6),
+    .table-main th:nth-child(7),
+    .table-main td:nth-child(7),
+    .table-main th:nth-child(8),
+    .table-main td:nth-child(8) { width:80px; text-align:right; }
+
+    .table-main th:nth-child(9),
+    .table-main td:nth-child(9) { padding-right:0; }
+
+    .note-cell {
+      display:block;
+      max-width:100%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      box-sizing:border-box;
+    }
+
+    tbody tr:nth-child(even) { background:rgba(248,250,252,0.9); }
+    body.dark-mode tbody tr:nth-child(even) { background:rgba(15,23,42,0.9); }
+    tbody tr:hover { background:rgba(219,234,254,0.75); }
+    body.dark-mode tbody tr:hover { background:rgba(30,64,175,0.35); }
+
+    /* Dòng được chọn */
+    .row-selected {
+      background:rgba(59,130,246,0.18) !important;
+    }
+
+    .filters-row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      font-size:11px;
+      margin-bottom:6px;
+      color:var(--text-muted);
+    }
+    .filters-row label {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+    }
+
+    select {
+      font-size:11px;
+      padding:3px 6px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,0.95);
+      color:var(--text);
+    }
+    body.dark-mode select {
+      background:#020617;
+      color:var(--text);
+    }
+
+    .chip {
+      font-size:10px;
+      border-radius:999px;
+      padding:2px 7px;
+      border:1px solid rgba(148,163,184,0.7);
+      color:var(--text-muted);
+      margin-left:4px;
+    }
+
+    .chart-split { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+    .chart-half { flex:1 1 0; min-width:140px; height:180px; position:relative; }
+    .chart-half canvas { width:100%; height:100%; }
+
+    .chart-legend {
+      font-size:10px;
+      color:var(--text-muted);
+      margin-top:4px;
+      display:flex;
+      justify-content:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .legend-item { display:inline-flex; align-items:center; gap:4px; }
+    .legend-color { width:10px; height:10px; border-radius:3px; }
+
+    .tag {
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      padding:2px 6px;
+      font-size:10px;
+      border:1px solid transparent;
+      gap:4px;
+    }
+    .tag-open {
+      background:rgba(248,113,113,0.08);
+      border-color:rgba(248,113,113,0.5);
+      color:#b91c1c;
+    }
+    .tag-progress {
+      background:rgba(251,191,36,0.08);
+      border-color:rgba(251,191,36,0.5);
+      color:#92400e;
+    }
+    .tag-closed {
+      background:rgba(52,211,153,0.08);
+      border-color:rgba(52,211,153,0.5);
+      color:#065f46;
+    }
+
+    /* Khối detail view */
+    .detail-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:4px 16px;
+      font-size:11px;
+      margin-top:4px;
+    }
+    .detail-row {
+      display:flex;
+      align-items:flex-start;
+      gap:4px;
+    }
+    .detail-label {
+      font-weight:600;
+      color:var(--text-muted);
+      min-width:90px;
+      flex-shrink:0;
+    }
+    .detail-value {
+      color:var(--text);
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    .detail-empty {
+      font-size:11px;
+      color:var(--text-muted);
+      font-style:italic;
+      margin-top:2px;
+    }
+
+    @media (max-width:960px) {
+      .summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .details-grid { grid-template-columns:1fr; }
+      .title-block { max-width:100%; }
+      .detail-grid { grid-template-columns:1fr; }
+    }
+    @media (max-width:720px) {
+      .summary-grid { grid-template-columns:1fr; }
+      .meta-row { flex-direction:column; gap:4px; }
+      .toolbar { justify-content:flex-start; }
+    }
+
+    @media print {
+      body { background:#ffffff; padding:0; }
+      .container { box-shadow:none; border-radius:0; border:none; }
+      .toolbar, #btnTheme { display:none !important; }
+      .tabs-wrapper { border:none; box-shadow:none; }
+      .tab { border-radius:0; }
+      .detail-empty { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-top">
+        <div class="title-block">
+          <h1 contenteditable="true">BÁO CÁO KHỐI LƯỢNG THEO NHÀ THẦU</h1>
+          <div class="subtitle">
+            Báo cáo tổng hợp khối lượng thực hiện, tiến độ hợp đồng và tình trạng vướng mắc theo từng nhà thầu.
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-row">
+            <span><label>Người báo cáo:</label> <span contenteditable="true" id="reportAuthor">________________</span></span>
+          </div>
+          <div class="meta-row">
+            <span><label>Ngày báo cáo:</label> <span id="reportDate">05/09/2026</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <label class="btn primary">
+          <span class="btn-icon">📂</span> Nhập Excel
+          <input type="file" id="excelFile" accept=".xlsx,.xls">
+        </label>
+        <button class="btn" id="btnExportExcel"><span class="btn-icon">⬇</span> Xuất Excel</button>
+        <button class="btn" id="btnExportPdf"><span class="btn-icon">📄</span> Xuất PDF</button>
+        <button class="btn" id="btnExportHtml"><span class="btn-icon">🧷</span> Xuất HTML tĩnh</button>
+        <button class="btn" id="btnTheme"><span class="btn-icon">☀</span> Light / Dark</button>
+      </div>
+    </header>
+
+    <div class="tabs-wrapper">
+      <div id="tabs" class="tabs"><button class="tab">Tổng Quan - Hồ sơ</button><button class="tab">SEEN</button><button class="tab">BẮC NGỌC</button><button class="tab">THÀNH CÔNG</button><button class="tab active">TL. HÀ TÂY</button></div>
+      <div id="contractor-content"><div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Tiến độ trung bình</div>
+          <div class="summary-main-value">2.8%</div>
+
+          <div class="card-subtitle">Mức độ hạng mục theo dải %</div>
+          <div class="bands-row">
+            <span class="chip">0-10%: <strong>30</strong></span> <span class="chip">10-20%: <strong>0</strong></span> <span class="chip">20-30%: <strong>1</strong></span> <span class="chip">30-40%: <strong>0</strong></span> <span class="chip">40-50%: <strong>0</strong></span>
+          </div>
+          <div class="bands-row">
+            <span class="chip">50-60%: <strong>0</strong></span> <span class="chip">60-70%: <strong>0</strong></span> <span class="chip">70-80%: <strong>0</strong></span> <span class="chip">80-90%: <strong>0</strong></span> <span class="chip">90-100%: <strong>0</strong></span>
+          </div>
+
+          <div class="card-subtitle" style="margin-top:6px;">Tình trạng vướng mắc</div>
+          <div class="summary-main-value" style="font-size:18px;margin-bottom:2px;">0</div>
+          <div class="summary-subtext">
+            <span class="tag tag-open">Chưa xử lý: <strong>0</strong></span>
+            <span class="tag tag-progress">Đang xử lý: <strong>0</strong></span>
+            <span class="tag tag-closed">Đã xong: <strong>0</strong></span>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-label">Biểu đồ tiến độ tổng thể</div>
+          <div class="chart-split">
+            <div class="chart-half"><canvas id="chart-overall" width="180" height="180" style="display: block; box-sizing: border-box; height: 180px; width: 180px;"></canvas></div>
+            <div class="chart-half"><canvas id="chart-status" width="259" height="129" style="display: block; box-sizing: border-box; height: 129px; width: 259px;"></canvas></div>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color" style="background:#06b6d4;"></span> Đã thực hiện</span>
+            <span class="legend-item"><span class="legend-color" style="background:#ef4444;"></span> Còn lại</span>
+          </div>
+        </div>
+      </div>
+        <div class="details-grid">
+          <div class="card">
+            <div class="card-title">
+              <span>Chi tiết khối lượng - TL. HÀ TÂY</span>
+            </div>
+            <div class="filters-row">
+              <label>Gói thầu:
+                <select id="filterPkg"><option value="">Tất cả</option><option value="YL.C02.4">YL.C02.4</option></select>
+              </label>
+              <label>Hạng mục:
+                <select id="filterItem"><option value="">Tất cả</option><option value="I. Nền đường">I. Nền đường</option><option value="I. Phần xây dựng">I. Phần xây dựng</option><option value="I. Tuyến cống">I. Tuyến cống</option><option value="I. Tuyến ống">I. Tuyến ống</option><option value="I. Tủ chiếu sáng">I. Tủ chiếu sáng</option><option value="I. Đường ống">I. Đường ống</option><option value="II. Cột đèn chiếu sáng">II. Cột đèn chiếu sáng</option><option value="II. Cửa thu">II. Cửa thu</option><option value="II. Hệ thống gối đỡ đường ống, tê, côn, cút">II. Hệ thống gối đỡ đường ống, tê, côn, cút</option><option value="II. Hố ga thoát nước thải">II. Hố ga thoát nước thải</option><option value="II. Hố ga thu nước">II. Hố ga thu nước</option><option value="II. Mặt đường">II. Mặt đường</option><option value="II. Phần công nghệ">II. Phần công nghệ</option><option value="III. Cáp ngầm">III. Cáp ngầm</option><option value="III. Hố van, hố đồng hồ">III. Hố van, hố đồng hồ</option><option value="III. Phần điện">III. Phần điện</option><option value="III. Trụ đỡ cống thoát nước thải qua kênh">III. Trụ đỡ cống thoát nước thải qua kênh</option><option value="III. Vỉa hè, dải phân cách">III. Vỉa hè, dải phân cách</option><option value="IV. Trụ cứu hỏa">IV. Trụ cứu hỏa</option><option value="IV. Đan rãnh">IV. Đan rãnh</option><option value="Mục 10: HẠNG MỤC CẤP ĐIỆN">Mục 10: HẠNG MỤC CẤP ĐIỆN</option><option value="Mục 1: HẠNG MỤC GIAO THÔNG">Mục 1: HẠNG MỤC GIAO THÔNG</option><option value="Mục 2: HẠNG MỤC THOÁT NƯỚC MƯA">Mục 2: HẠNG MỤC THOÁT NƯỚC MƯA</option><option value="Mục 3: HẠNG MỤC MƯƠNG THOÁT NƯỚC">Mục 3: HẠNG MỤC MƯƠNG THOÁT NƯỚC</option><option value="Mục 4: HẠNG MỤC CỐNG HỘP LỚN">Mục 4: HẠNG MỤC CỐNG HỘP LỚN</option><option value="Mục 5: HẠNG MỤC KÊNH TƯỚI HOÀN TRẢ - PHÍA ĐƯỜNG D2">Mục 5: HẠNG MỤC KÊNH TƯỚI HOÀN TRẢ - PHÍA ĐƯỜNG D2</option><option value="Mục 6: HẠNG MỤC THOÁT NƯỚC THẢI">Mục 6: HẠNG MỤC THOÁT NƯỚC THẢI</option><option value="Mục 7: HẠNG MỤC TRẠM BƠM THOÁT NƯỚC THẢI SỐ 2, CÔNG SUẤT 98M3/H">Mục 7: HẠNG MỤC TRẠM BƠM THOÁT NƯỚC THẢI SỐ 2, CÔNG SUẤT 98M3/H</option><option value="Mục 8: HẠNG MỤC CẤP NƯỚC">Mục 8: HẠNG MỤC CẤP NƯỚC</option><option value="Mục 9: HẠNG MỤC CHIẾU SÁNG">Mục 9: HẠNG MỤC CHIẾU SÁNG</option><option value="V. Bó gáy hè">V. Bó gáy hè</option></select>
+              </label>
+              <label>Dải %:
+                <select id="filterBand">
+                  <option value="">Tất cả</option>
+                  <option value="&gt;=90">≥ 90% (gần hoàn thành)</option>
+                  <option value="&lt;50">&lt; 50% (chậm)</option>
+                </select>
+              </label>
+            </div>
+            <div class="table-wrapper">
+              <table class="table-main">
+                <thead>
+                  <tr>
+                    <th title="Gói thầu">Gói thầu</th>
+                    <th title="Hạng mục">Hạng mục</th>
+                    <th title="Đơn vị">Đơn vị</th>
+                    <th title="KL HĐ">KL HĐ</th>
+                    <th title="Lũy kế trước">Lũy kế trước</th>
+                    <th title="Tuần này">Tuần này</th>
+                    <th title="Lũy kế đến nay">Lũy kế đến nay</th>
+                    <th title="% hoàn thành">% hoàn thành</th>
+                    <th title="Ghi chú">Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-main"><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 1: HẠNG MỤC GIAO THÔNG">Mục 1: HẠNG MỤC GIAO THÔNG</td>
+            <td></td>
+            <td title="19.308.709.393,06">19.308.709.393,06</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="I. Nền đường">I. Nền đường</td>
+            <td></td>
+            <td title="7.219.044.155,38">7.219.044.155,38</td>
+            <td title="1.539.585.083">1.539.585.083</td>
+            <td title="439.375.500">439.375.500</td>
+            <td title="1.978.960.583">1.978.960.583</td>
+            <td title="27.4%">27.4%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="II. Mặt đường">II. Mặt đường</td>
+            <td></td>
+            <td title="10.608.752.041,78">10.608.752.041,78</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="III. Vỉa hè, dải phân cách">III. Vỉa hè, dải phân cách</td>
+            <td></td>
+            <td title="1.077.388.531,91">1.077.388.531,91</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="IV. Đan rãnh">IV. Đan rãnh</td>
+            <td></td>
+            <td title="44.191.236,8">44.191.236,8</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="V. Bó gáy hè">V. Bó gáy hè</td>
+            <td></td>
+            <td title="359.333.427,19">359.333.427,19</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 2: HẠNG MỤC THOÁT NƯỚC MƯA">Mục 2: HẠNG MỤC THOÁT NƯỚC MƯA</td>
+            <td></td>
+            <td title="3.244.746.550,658">3.244.746.550,658</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="I. Tuyến cống">I. Tuyến cống</td>
+            <td></td>
+            <td title="2.766.217.612,8">2.766.217.612,8</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="II. Hố ga thu nước">II. Hố ga thu nước</td>
+            <td></td>
+            <td title="360.898.839,858">360.898.839,858</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="II. Cửa thu">II. Cửa thu</td>
+            <td></td>
+            <td title="117.630.098">117.630.098</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 3: HẠNG MỤC MƯƠNG THOÁT NƯỚC">Mục 3: HẠNG MỤC MƯƠNG THOÁT NƯỚC</td>
+            <td></td>
+            <td title="2.861.450.785,8">2.861.450.785,8</td>
+            <td title="183.369.071">183.369.071</td>
+            <td title="0">0</td>
+            <td title="183.369.071">183.369.071</td>
+            <td title="6.4%">6.4%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 4: HẠNG MỤC CỐNG HỘP LỚN">Mục 4: HẠNG MỤC CỐNG HỘP LỚN</td>
+            <td></td>
+            <td title="4.577.057.245,63">4.577.057.245,63</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 5: HẠNG MỤC KÊNH TƯỚI HOÀN TRẢ - PHÍA ĐƯỜNG D2">Mục 5: HẠNG MỤC KÊNH TƯỚI HOÀN TRẢ - PHÍA ĐƯỜNG D2</td>
+            <td></td>
+            <td title="1.120.757.168">1.120.757.168</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 6: HẠNG MỤC THOÁT NƯỚC THẢI">Mục 6: HẠNG MỤC THOÁT NƯỚC THẢI</td>
+            <td></td>
+            <td title="1.622.236.463,28">1.622.236.463,28</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="I. Đường ống">I. Đường ống</td>
+            <td></td>
+            <td title="1.107.601.983,74">1.107.601.983,74</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="II. Hố ga thoát nước thải">II. Hố ga thoát nước thải</td>
+            <td></td>
+            <td title="420.109.506,04">420.109.506,04</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="III. Trụ đỡ cống thoát nước thải qua kênh">III. Trụ đỡ cống thoát nước thải qua kênh</td>
+            <td></td>
+            <td title="94.524.973,5">94.524.973,5</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 7: HẠNG MỤC TRẠM BƠM THOÁT NƯỚC THẢI SỐ 2, CÔNG SUẤT 98M3/H">Mục 7: HẠNG MỤC TRẠM BƠM THOÁT NƯỚC THẢI SỐ 2, CÔNG SUẤT 98M3/H</td>
+            <td></td>
+            <td title="2.248.253.790,472">2.248.253.790,472</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="I. Phần xây dựng">I. Phần xây dựng</td>
+            <td></td>
+            <td title="634.720.227,372">634.720.227,372</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="II. Phần công nghệ">II. Phần công nghệ</td>
+            <td></td>
+            <td title="391.312.304,5">391.312.304,5</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="III. Phần điện">III. Phần điện</td>
+            <td></td>
+            <td title="1.222.221.258,6">1.222.221.258,6</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 8: HẠNG MỤC CẤP NƯỚC">Mục 8: HẠNG MỤC CẤP NƯỚC</td>
+            <td></td>
+            <td title="5.301.448.581,7">5.301.448.581,7</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="I. Tuyến ống">I. Tuyến ống</td>
+            <td></td>
+            <td title="4.786.868.864,7">4.786.868.864,7</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="II. Hệ thống gối đỡ đường ống, tê, côn, cút">II. Hệ thống gối đỡ đường ống, tê, côn, cút</td>
+            <td></td>
+            <td title="18.668.412">18.668.412</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="III. Hố van, hố đồng hồ">III. Hố van, hố đồng hồ</td>
+            <td></td>
+            <td title="425.977.115">425.977.115</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="IV. Trụ cứu hỏa">IV. Trụ cứu hỏa</td>
+            <td></td>
+            <td title="69.934.190">69.934.190</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 9: HẠNG MỤC CHIẾU SÁNG">Mục 9: HẠNG MỤC CHIẾU SÁNG</td>
+            <td></td>
+            <td title="1.872.222.894,8">1.872.222.894,8</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="I. Tủ chiếu sáng">I. Tủ chiếu sáng</td>
+            <td></td>
+            <td title="38.931.470">38.931.470</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="II. Cột đèn chiếu sáng">II. Cột đèn chiếu sáng</td>
+            <td></td>
+            <td title="819.737.923">819.737.923</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="III. Cáp ngầm">III. Cáp ngầm</td>
+            <td></td>
+            <td title="1.013.553.501,8">1.013.553.501,8</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td><div class="note-cell"></div></td>
+          </tr><tr>
+            <td title="YL.C02.4">YL.C02.4</td>
+            <td title="Mục 10: HẠNG MỤC CẤP ĐIỆN">Mục 10: HẠNG MỤC CẤP ĐIỆN</td>
+            <td></td>
+            <td title="1.937.288.218">1.937.288.218</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0">0</td>
+            <td title="0.0%">0.0%</td>
+            <td title="Tỷ lệ Mục X/giá trị HĐ"><div class="note-cell">Tỷ lệ Mục X/giá trị HĐ</div></td>
+          </tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="detail-main-card">
+            <div class="card-title">
+              <span>Chi tiết hạng mục được chọn</span>
+            </div>
+            <div id="detail-main-empty" class="detail-empty" style="display: block;">
+              Chưa chọn dòng nào trong bảng khối lượng. Hãy click vào một dòng để xem chi tiết.
+            </div>
+            <div id="detail-main" class="detail-grid" style="display:none;">
+              <div class="detail-row">
+                <div class="detail-label">Gói thầu:</div>
+                <div class="detail-value" id="detailPkg"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Hạng mục:</div>
+                <div class="detail-value" id="detailItem"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Đơn vị:</div>
+                <div class="detail-value" id="detailUnit"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">KL HĐ:</div>
+                <div class="detail-value" id="detailContractQty"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Lũy kế trước:</div>
+                <div class="detail-value" id="detailPrevCum"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Tuần này:</div>
+                <div class="detail-value" id="detailThisWeek"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Lũy kế đến nay:</div>
+                <div class="detail-value" id="detailCum"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">% hoàn thành:</div>
+                <div class="detail-value" id="detailPct"></div>
+              </div>
+              <div class="detail-row" style="grid-column:1 / -1;">
+                <div class="detail-label">Ghi chú:</div>
+                <div class="detail-value" id="detailNote"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <div class="details-grid" style="margin-top:10px;">
+          <div class="card">
+            <div class="card-title">
+              <span>Danh sách vướng mắc</span>
+              <span class="badge"><span class="badge-dot"></span> TL. HÀ TÂY</span>
+            </div>
+            <div class="table-wrapper">
+              <table class="table-main">
+                <thead>
+                  <tr>
+                    <th title="Hạng mục">Hạng mục</th>
+                    <th title="Vướng mắc">Vướng mắc</th>
+                    <th title="Kiến nghị">Kiến nghị</th>
+                    <th title="Ngày phát sinh">Ngày phát sinh</th>
+                    <th title="Trạng thái">Trạng thái</th>
+                    <th title="Đơn vị phụ trách">Đơn vị phụ trách</th>
+                    <th title="Hạn giải quyết">Hạn giải quyết</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-issues"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="detail-issue-card">
+            <div class="card-title">
+              <span>Chi tiết vướng mắc được chọn</span>
+            </div>
+            <div id="detail-issue-empty" class="detail-empty">
+              Chưa chọn dòng nào trong bảng vướng mắc. Hãy click vào một dòng để xem chi tiết.
+            </div>
+            <div id="detail-issue" class="detail-grid" style="display:none;">
+              <div class="detail-row">
+                <div class="detail-label">Hạng mục:</div>
+                <div class="detail-value" id="detailIssueItem"></div>
+              </div>
+              <div class="detail-row" style="grid-column:1 / -1;">
+                <div class="detail-label">Vướng mắc:</div>
+                <div class="detail-value" id="detailIssueIssue"></div>
+              </div>
+              <div class="detail-row" style="grid-column:1 / -1;">
+                <div class="detail-label">Kiến nghị:</div>
+                <div class="detail-value" id="detailIssueProposal"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Ngày phát sinh:</div>
+                <div class="detail-value" id="detailIssueDateRaised"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Trạng thái:</div>
+                <div class="detail-value" id="detailIssueStatus"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Đơn vị phụ trách:</div>
+                <div class="detail-value" id="detailIssueOwner"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Hạn giải quyết:</div>
+                <div class="detail-value" id="detailIssueDueDate"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script id="embedded-data-json" type="application/json">{"contractors":{"SEEN":{"reportItems":[{"contractor":"SEEN","pkg":"YL.C01","item":"A. CHI PHÍ THI CÔNG XÂY LẮP","unit":"TL MỤC/HĐ","contractQty":0.5291,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục A/giá trị HĐ"},{"contractor":"SEEN","pkg":"YL.C01","item":"A.1. CỤM BỂ XỬ LÝ","unit":"","contractQty":0,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể gom nước thải","unit":"%","contractQty":0.048519862279326864,"prevCum":0.04479353685627456,"thisWeek":0,"cum":0.04479353685627456,"pct":92.32000000000001,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Cụm bể xử lý","unit":"%","contractQty":0.4822663359489696,"prevCum":0.37857907371994115,"thisWeek":0,"cum":0.37857907371994115,"pct":78.5,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Hồ sự cố","unit":"%","contractQty":0.09839741485229822,"prevCum":0.04651245800068137,"thisWeek":0.004309806770530657,"cum":0.05082226477121203,"pct":51.65,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Mương quan trắc nước thải","unit":"%","contractQty":0.00346316985431121,"prevCum":0.0027196272865905933,"thisWeek":0,"cum":0.0027196272865905933,"pct":78.53,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể chứa","unit":"%","contractQty":0.009010957439181778,"prevCum":0.008174740588825708,"thisWeek":0,"cum":0.008174740588825708,"pct":90.72,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Sân đường, vỉa hè","unit":"%","contractQty":0.036510507522677364,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Cổng, tường rào","unit":"%","contractQty":0.029691096928725676,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- San nền (mặt bằng)","unit":"%","contractQty":0.09028742454858768,"prevCum":0.03784848837076796,"thisWeek":0,"cum":0.03784848837076796,"pct":41.92,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Thoát nước mưa","unit":"%","contractQty":0.014587894511064696,"prevCum":0.0021400441247731907,"thisWeek":0,"cum":0.0021400441247731907,"pct":14.67,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"A.2. CỤM NHÀ CHỨC NĂNG VÀ CÁC HẠNG MỤC PHỤ TRỢ","unit":"","contractQty":0,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"SEEN","pkg":"YL.C01","item":"- Nhà bảo vệ","unit":"%","contractQty":0.005687724240607851,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Nhà ép bùn + kho chất thải nguy hại + nhà máy thổi khí","unit":"%","contractQty":0.03321766220006748,"prevCum":0.022750776840826215,"thisWeek":0,"cum":0.022750776840826215,"pct":68.49,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Nhà để xe","unit":"%","contractQty":0.00576274131596456,"prevCum":0.0016435338233130926,"thisWeek":0,"cum":0.0016435338233130926,"pct":28.52,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Nhà đặt máy phát điện","unit":"%","contractQty":0.0033460955491465285,"prevCum":0.0006906341213438435,"thisWeek":0,"cum":0.0006906341213438435,"pct":20.64,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Nhà điều hành","unit":"%","contractQty":0.12830603753154118,"prevCum":0.07455863840957858,"thisWeek":0.0017706233179352728,"cum":0.07632926172751385,"pct":59.489999999999995,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Cảnh quan, và cây xanh","unit":"%","contractQty":0.00901133850493856,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Nội thất các phòng làm việc","unit":"%","contractQty":0.001933736772590705,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục A"},{"contractor":"SEEN","pkg":"YL.C01","item":"B. CHI PHÍ THIẾT BỊ CÔNG NGHỆ","unit":"TL MỤC/HĐ","contractQty":0.4217,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục B/giá trị HĐ"},{"contractor":"SEEN","pkg":"YL.C01","item":"B.1. ĐƯỜNG ỐNG CÔNG NGHỆ VÀ PHỤ KIỆN","unit":"","contractQty":0,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"SEEN","pkg":"YL.C01","item":"- Hệ thống đường ống","unit":"Hệ","contractQty":0.10213514604830129,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Hệ thống phụ kiện","unit":"Hệ","contractQty":0.12317113864957446,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"B.2. PHẦN THIẾT BỊ CÔNG NGHỆ","unit":"","contractQty":0,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể thu gom","unit":"Trọn gói","contractQty":0.02553093037611184,"prevCum":0.0032,"thisWeek":0,"cum":0.0032,"pct":12.533816640674006,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể lắng cát và tách dầu mỡ","unit":"Trọn gói","contractQty":0.006073504515682176,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể điều hòa","unit":"Trọn gói","contractQty":0.012778778690374736,"prevCum":0.0028,"thisWeek":0,"cum":0.0028,"pct":21.911327113826793,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể điều chỉnh ph1","unit":"Trọn gói","contractQty":0.01450322599983366,"prevCum":0.0108,"thisWeek":0,"cum":0.0108,"pct":74.46619117790668,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể xử lý kim loại nặng","unit":"Trọn gói","contractQty":0.008792067100792037,"prevCum":0.0035,"thisWeek":0,"cum":0.0035,"pct":39.80861337699187,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể keo tụ","unit":"Trọn gói","contractQty":0.009879285912021021,"prevCum":0.0073,"thisWeek":0,"cum":0.0073,"pct":73.89198030110082,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể tạo bông","unit":"Trọn gói","contractQty":0.00980807838709032,"prevCum":0.0076,"thisWeek":0,"cum":0.0076,"pct":77.48714580017369,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể lắng hóa lý","unit":"Trọn gói","contractQty":0.021336176358494805,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể trung gian 1","unit":"Trọn gói","contractQty":0.0064542282243619156,"prevCum":0.0035,"thisWeek":0,"cum":0.0035,"pct":54.228017329616826,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể anoxic","unit":"Trọn gói","contractQty":0.014199775192995244,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể Aerotank","unit":"Trọn gói","contractQty":0.028615720419085056,"prevCum":0.0155,"thisWeek":0,"cum":0.0155,"pct":54.16603102420019,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể lắng sinh học","unit":"Trọn gói","contractQty":0.0461606722858265,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể trung gian 2","unit":"Trọn gói","contractQty":0.007772416588347383,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể khử trùng","unit":"Trọn gói","contractQty":0.00758445055788721,"prevCum":0.0035,"thisWeek":0,"cum":0.0035,"pct":46.14704747940226,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể kiểm chứng","unit":"Trọn gói","contractQty":0.014371910589718694,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Hồ sự cố","unit":"Trọn gói","contractQty":0.0052317515080260646,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Nhà đặt máy thổi khí","unit":"Trọn gói","contractQty":0.03808001324288132,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể chứa bùn","unit":"Trọn gói","contractQty":0.004155996259158155,"prevCum":0.0003,"thisWeek":0,"cum":0.0003,"pct":7.218485804430642,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Bể nén bùn","unit":"Trọn gói","contractQty":0.013996463758951196,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Nhà đặt máy ép bùn","unit":"Trọn gói","contractQty":0.07014662985526474,"prevCum":0.0037,"thisWeek":0,"cum":0.0037,"pct":5.274665379697216,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Hệ thống xử lý mùi","unit":"Trọn gói","contractQty":0.011223373435414843,"prevCum":0.0043,"thisWeek":0,"cum":0.0043,"pct":38.31290141724721,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Thiết bị phụ trợ","unit":"Trọn gói","contractQty":0.0017735162086658562,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"B.3. THIẾT BỊ PHÒNG THÍ NGHIỆM","unit":"Trọn gói","contractQty":0.013894747388160066,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"B.4. THIẾT BỊ QUAN TRẮC NƯỚC THẢI SAU XỬ LÝ (Các chỉ tiêu: COD, pH, TSS, lưu lượng kênh hở, amoni","unit":"Trọn gói","contractQty":0.06702344597644727,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"B.5. THIẾT BỊ ĐIỀU KHIỂN, ĐIỆN ĐỘNG LỰC","unit":"Trọn gói","contractQty":0.3092411795599102,"prevCum":0.0347,"thisWeek":0,"cum":0.0347,"pct":11.221015276614372,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"B.6. CHI PHÍ VẬN CHUYỂN LẮP ĐẶT HỆ THỐNG","unit":"Trọn gói","contractQty":0.006065376910621943,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục B"},{"contractor":"SEEN","pkg":"YL.C01","item":"C. CHI PHÍ KHÁC","unit":"TL MỤC/HĐ","contractQty":0.0492,"prevCum":0.0035941257366876285,"thisWeek":0,"cum":0.0035941257366876285,"pct":7.305133611153717,"note":"Tỷ lệ Mục C/giá trị HĐ"},{"contractor":"SEEN","pkg":"YL.C01","item":"C.1. GIAI ĐOẠN THỬ TẢI ĐỘNG KHI CHƯA CÓ NƯỚC THẢI","unit":"","contractQty":0,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"SEEN","pkg":"YL.C01","item":"- Chi phí khảo sát dự án","unit":"Trọn gói","contractQty":0.02105750258019399,"prevCum":0.02105750258019399,"thisWeek":0,"cum":0.02105750258019399,"pct":100,"note":"TL HM/Giá trị Mục C"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Chi phí thiết kế bản vẽ thi công xây dựng, công nghệ","unit":"Trọn gói","contractQty":0.05199383353134318,"prevCum":0.05199383353134318,"thisWeek":0,"cum":0.05199383353134318,"pct":100,"note":"TL HM/Giá trị Mục C"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Chi phí đào tạo hướng dẫn vận hành","unit":"Trọn gói","contractQty":0.010398766706268636,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục C"},{"contractor":"SEEN","pkg":"YL.C01","item":"- Thủ tục xin cấp giấy phép môi trường","unit":"Trọn gói","contractQty":0.46794450178208863,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục C"},{"contractor":"SEEN","pkg":"YL.C01","item":"C.2. GIAI ĐOẠN VẬN HÀNH KHI CÓ NƯỚC THẢI","unit":"","contractQty":0.4486053954001056,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"TL HM/Giá trị Mục C"}],"issues":[]},"BẮC NGỌC":{"reportItems":[{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"I. NHÀ TANG LỄ","unit":"vnđ","contractQty":270996604,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục I/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Kết cấu","unit":"vnđ","contractQty":88629279,"prevCum":88629279,"thisWeek":0,"cum":88629279,"pct":100,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Kiến trúc","unit":"vnđ","contractQty":176365542,"prevCum":146611507,"thisWeek":0,"cum":146611507,"pct":83.12933770248613,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Cấp điện","unit":"vnđ","contractQty":6001783,"prevCum":1326050,"thisWeek":0,"cum":1326050,"pct":22.094267653462314,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"II. NHÀ QUẢN TRANG","unit":"vnđ","contractQty":217976087,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục II/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Kết cấu","unit":"vnđ","contractQty":87170914,"prevCum":86749265,"thisWeek":0,"cum":86749265,"pct":99.51629622697314,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Kiến trúc","unit":"vnđ","contractQty":95964885,"prevCum":63861984,"thisWeek":0,"cum":63861984,"pct":66.54724173326525,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Cấp điện","unit":"vnđ","contractQty":4986110,"prevCum":1606495,"thisWeek":0,"cum":1606495,"pct":32.21940550850262,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Cấp thoát nước","unit":"vnđ","contractQty":20059324,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Phần thoát nước","unit":"vnđ","contractQty":2964585,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Hố ga 600×600","unit":"vnđ","contractQty":6830269,"prevCum":6830269,"thisWeek":0,"cum":6830269,"pct":100,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"III. CỔNG CHÍNH (02 CÁI)","unit":"vnđ","contractQty":84197953,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục III/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"IV. TƯỜNG RÀO","unit":"vnđ","contractQty":638398815,"prevCum":379895976,"thisWeek":0,"cum":379895976,"pct":59.5076254958274,"note":"Tỷ lệ Mục IV/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"V. RÃNH THOÁT NƯỚC","unit":"vnđ","contractQty":446294658,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục V/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Rãnh thu nước","unit":"vnđ","contractQty":423780625,"prevCum":38469940,"thisWeek":0,"cum":38469940,"pct":9.077795852512134,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Hố ga rãnh thoát","unit":"vnđ","contractQty":22514033,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"VI. SÂN KHU TANG LỄ","unit":"vnđ","contractQty":297644437,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục VI/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"VII. ĐƯỜNG BÊ TÔNG","unit":"vnđ","contractQty":321222523,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục VII/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"VIII. HỐ MỘ ĐIỂN HÌNH (01 CÁI)","unit":"vnđ","contractQty":3453237,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục VIII/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"IX. ĐIỆN CHIẾU SÁNG TỔNG THỂ","unit":"vnđ","contractQty":432874911,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục IX/giá trị HĐ"},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Móng tủ điện chiếu sáng","unit":"vnđ","contractQty":2955366,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Móng cột đèn (20 cái)","unit":"vnđ","contractQty":150537869,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Cáp điện","unit":"vnđ","contractQty":114353638,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Rãnh cáp","unit":"vnđ","contractQty":164420345,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"- Móng ổ cắm ngoài trời","unit":"vnđ","contractQty":607693,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","item":"X. SAN NỀN","unit":"vnđ","contractQty":1117611566,"prevCum":711704000,"thisWeek":0,"cum":711704000,"pct":63.68080124181535,"note":"Tỷ lệ Mục X/giá trị HĐ"}],"issues":[]},"THÀNH CÔNG":{"reportItems":[{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"Mục 1: HẠNG MỤC GIAO THÔNG","unit":"","contractQty":31858124652.70076,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"I. Nền đường","unit":"","contractQty":9198623511.285862,"prevCum":1134348486,"thisWeek":400674334,"cum":1535022820,"pct":16.687527412298902,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"II. Mặt đường","unit":"","contractQty":20836821675.295937,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"III. Vỉa hè, dải phân cách","unit":"","contractQty":1822679466.1189601,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"Mục 2: HẠNG MỤC MƯƠNG THOÁT NƯỚC","unit":"","contractQty":11522167221.172379,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"Mục 3: HẠNG MỤC THOÁT NƯỚC MƯA","unit":"","contractQty":6839680554.948001,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"I. Tuyến cống","unit":"","contractQty":5211570965.337025,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"II. Hố ga","unit":"","contractQty":1323196505.610976,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"III. Cửa thu","unit":"","contractQty":304913084,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"Mục 4: HẠNG MỤC CỐNG HỘP ĐỔ TẠI CHỖ","unit":"","contractQty":3787746592.2448,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"Mục 5: HẠNG MỤC THOÁT NƯỚC THẢI","unit":"","contractQty":3469126337.51,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"I. Đường ống","unit":"","contractQty":2389713208.69,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"II. Hố ga thoát nước thải","unit":"","contractQty":971755099.82,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"III. Trụ đỡ cống thoát nước thải qua kênh","unit":"","contractQty":76480818,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"IV. Cửa xả nước thải sau xử lý","unit":"","contractQty":31177211,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"Mục 6: HẠNG MỤC CẤP NƯỚC","unit":"","contractQty":2405038151.3,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"I. Tuyến ống","unit":"","contractQty":2193443856.3,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"II. Gối đỡ","unit":"","contractQty":4792112,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"III. Hố van, hố đồng hồ","unit":"","contractQty":100174018,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"IV. Trụ cứu hỏa","unit":"","contractQty":106628165,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"Mục 7: HẠNG MỤC CẤP ĐIỆN","unit":"","contractQty":3534059904.25,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"Mục 8: HẠNG MỤC CHIẾU SÁNG","unit":"","contractQty":2923670551.799999,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"I. Cột đèn chiếu sáng","unit":"","contractQty":904988359,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","item":"II. Cáp ngầm","unit":"","contractQty":2018682192.7999995,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""}],"issues":[]},"TL. HÀ TÂY":{"reportItems":[{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 1: HẠNG MỤC GIAO THÔNG","unit":"","contractQty":19308709393.059998,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"I. Nền đường","unit":"","contractQty":7219044155.38,"prevCum":1539585083,"thisWeek":439375500,"cum":1978960583,"pct":27.413055529313773,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"II. Mặt đường","unit":"","contractQty":10608752041.78,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"III. Vỉa hè, dải phân cách","unit":"","contractQty":1077388531.91,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"IV. Đan rãnh","unit":"","contractQty":44191236.800000004,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"V. Bó gáy hè","unit":"","contractQty":359333427.19,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 2: HẠNG MỤC THOÁT NƯỚC MƯA","unit":"","contractQty":3244746550.658,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"I. Tuyến cống","unit":"","contractQty":2766217612.8,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"II. Hố ga thu nước","unit":"","contractQty":360898839.85800004,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"II. Cửa thu","unit":"","contractQty":117630098,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 3: HẠNG MỤC MƯƠNG THOÁT NƯỚC","unit":"","contractQty":2861450785.7999997,"prevCum":183369071,"thisWeek":0,"cum":183369071,"pct":6.4082552777064095,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 4: HẠNG MỤC CỐNG HỘP LỚN","unit":"","contractQty":4577057245.63,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 5: HẠNG MỤC KÊNH TƯỚI HOÀN TRẢ - PHÍA ĐƯỜNG D2","unit":"","contractQty":1120757168,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 6: HẠNG MỤC THOÁT NƯỚC THẢI","unit":"","contractQty":1622236463.28,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"I. Đường ống","unit":"","contractQty":1107601983.74,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"II. Hố ga thoát nước thải","unit":"","contractQty":420109506.03999996,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"III. Trụ đỡ cống thoát nước thải qua kênh","unit":"","contractQty":94524973.5,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 7: HẠNG MỤC TRẠM BƠM THOÁT NƯỚC THẢI SỐ 2, CÔNG SUẤT 98M3/H","unit":"","contractQty":2248253790.472,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"I. Phần xây dựng","unit":"","contractQty":634720227.372,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"II. Phần công nghệ","unit":"","contractQty":391312304.5,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"III. Phần điện","unit":"","contractQty":1222221258.6,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 8: HẠNG MỤC CẤP NƯỚC","unit":"","contractQty":5301448581.7,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"I. Tuyến ống","unit":"","contractQty":4786868864.7,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"II. Hệ thống gối đỡ đường ống, tê, côn, cút","unit":"","contractQty":18668412,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"III. Hố van, hố đồng hồ","unit":"","contractQty":425977115,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"IV. Trụ cứu hỏa","unit":"","contractQty":69934190,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 9: HẠNG MỤC CHIẾU SÁNG","unit":"","contractQty":1872222894.8,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"I. Tủ chiếu sáng","unit":"","contractQty":38931470,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"II. Cột đèn chiếu sáng","unit":"","contractQty":819737923,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"III. Cáp ngầm","unit":"","contractQty":1013553501.8,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":""},{"contractor":"TL. HÀ TÂY","pkg":"YL.C02.4","item":"Mục 10: HẠNG MỤC CẤP ĐIỆN","unit":"","contractQty":1937288218,"prevCum":0,"thisWeek":0,"cum":0,"pct":0,"note":"Tỷ lệ Mục X/giá trị HĐ"}],"issues":[]}},"overview":[{"contractor":"SEEN","pkg":"YL.C01","contractDays":365,"startDate":45966,"endDate":46330,"daysDone":304,"daysRemain":61,"ratio":0.37753622353531197},{"contractor":"BẮC NGỌC","pkg":"YL.C14.1","contractDays":90,"startDate":46111,"endDate":46201,"daysDone":159,"daysRemain":-69,"ratio":0.39828135808081766},{"contractor":"THÀNH CÔNG","pkg":"YL.C02.3","contractDays":240,"startDate":46209,"endDate":46456,"daysDone":61,"daysRemain":186,"ratio":0.023138856683556145},{"contractor":"TL.HÀ TÂY","pkg":"YL.C02.4","contractDays":240,"startDate":46209,"endDate":46456,"daysDone":61,"daysRemain":186,"ratio":0.049038900164115135}],"documents":[{"name":"NHÀ THẦU SEEN","submitDate":"","status":"","approvedDate":""},{"name":"YL.C01- Đệ trình phê duyệt vật tư - Băng cản nước Hyperstop","submitDate":46057,"status":"","approvedDate":"Đã chấp thuận có điều kiện (2/3/2026)"},{"name":"YL.C01- Đệ trình phê duyệt vật tư - Gạch Tiến Long","submitDate":46057,"status":"","approvedDate":"Đã chấp thuận có điều kiện (11/2/2026)"},{"name":"YL.C01- Đệ trình phê duyệt vật tư - Đá Tiến Long","submitDate":46057,"status":"","approvedDate":"Đã chấp thuận có điều kiện (11/2/2026)"},{"name":"YL.C01- Đệ trình phê duyệt vật tư - Vải địa Aritex","submitDate":46059,"status":"","approvedDate":"Đã chấp thuận có điều kiện (11/2/2026)"},{"name":"YL.C01- Đệ trình phê duyệt vật tư - HDPE Hưng Việt","submitDate":46059,"status":"","approvedDate":"Đã chấp thuận có điều kiện (2/3/2026)"},{"name":"YL.C01- Đệ trình phê duyệt vật tư - Cát Gia Thịnh","submitDate":46059,"status":"","approvedDate":"Đã chấp thuận có điều kiện (11/2/2026)"},{"name":"YL.C01- Đệ trình phê duyệt vật tư - Cát Thái Minh","submitDate":46060,"status":"","approvedDate":"Đã chấp thuận có điều kiện (11/2/2026)"},{"name":"YL.C01- Đệ trình phê duyệt vật tư - Xi măng Vissai","submitDate":46060,"status":"","approvedDate":"Đã chấp thuận có điều kiện (11/2/2026)"},{"name":"YL.C01- Đệ trình lại: Phê duyệt Phần: I– Đường ống công nghệ và phụ kiện (Phần 1)","submitDate":46063,"status":"Trình lần 3","approvedDate":"Đã chấp thuận có điều kiện (4/3/2026)"},{"name":"YL.C01- Đệ trình Phê duyệt thiết bị: III - Thiết bị phòng thí nghiệm","submitDate":46077,"status":"Trình lần 1","approvedDate":"Đã chấp thuận có điều kiện (4/3/2026)"},{"name":"YL.C01- Đệ trình lại: Phê duyệt Thiết bị Trạm quan trắc + Điện tự động (mục IV+V)","submitDate":46078,"status":"Trình lần 3","approvedDate":"Đã chấp thuận có điều kiện (4/3/2026)"},{"name":"YL.C01- Đệ trình lại: Phê duyệt Phần: I– Đường ống công nghệ và phụ kiện (Phần 2)","submitDate":46084,"status":"Trình lần 1","approvedDate":"Đã chấp thuận có điều kiện (4/3/2026)"},{"name":"YL.C01- Chấp thuận thiết kế cấp phối bê tông trạm XLNT","submitDate":46078,"status":"","approvedDate":"Chấp thuận hồ sơ bổ sung Trạm trộn Thiên Tân"},{"name":"YL.C01- Trình nhà cung cấp thép hộp, thép ống Hòa Phát","submitDate":46244,"status":"","approvedDate":"Chấp thuận có điều kiện"},{"name":"YL.C01- Trình nhà cung cấp tôn lợp mái Hòa Phát","submitDate":46244,"status":"","approvedDate":"Chấp thuận có điều kiện"},{"name":"YL.C01- Trình nhà cung cấp thiết bị vệ sinh Inax","submitDate":46244,"status":"","approvedDate":"Chấp thuận có điều kiện"},{"name":"YL.C01- Trình nhà cung cấp tấm nhựa Polycarbonate","submitDate":46245,"status":"","approvedDate":"Chấp thuận có điều kiện"},{"name":"NHÀ THẦU BẮC NGỌC","submitDate":"","status":"","approvedDate":""},{"name":"YL.C14.1- Đệ trình phê duyệt Cty TNHH TM-XD Huy Hưng cung cấp vật tư cát, đá xây dựng","submitDate":46118,"status":"","approvedDate":"Đã chấp thuận có điều kiện"},{"name":"YL.C14.1- Đệ trình phê duyệt Cty TNHH Tùng Lâm Bắc Ninh cung cấp xi măng sắt thép","submitDate":46118,"status":"","approvedDate":"Đã chấp thuận có điều kiện"},{"name":"YL.C14.1- Cty CP xây dựng Quang Vinh sản xuất, cung cấp gạch bê tông","submitDate":46118,"status":"","approvedDate":"Đã chấp thuận có điều kiện"},{"name":"YL.C14.1- Cty TNHH Đầu tư xây dựng Thái Dương Bắc Giang cung cấp đất san lấp, đắp nền đường","submitDate":46118,"status":"","approvedDate":"Đã chấp thuận có điều kiện"},{"name":"NHÀ THẦU THÀNH CÔNG","submitDate":"","status":"","approvedDate":""},{"name":"YL.C02.3- Hồ sơ pháp lý, nhân sự BĐH","submitDate":46192,"status":"","approvedDate":"Đã chấp thuận nhân sự BĐH"},{"name":"YL.C02.3- Biện pháp, tiến độ thi công tổng thể","submitDate":46168,"status":"","approvedDate":"Đã chấp thuận"},{"name":"YL.C02.3- Nhà cung cấp đất đắp nền Công ty TNHH Trần Phương Capital (Mỏ đất Hòa Sơn 1- Công ty TNHH Cụm công nghiệp Hòa Sơn 1)","submitDate":46226,"status":"","approvedDate":"Đã chấp thuận có điều kiện"},{"name":"YL.C02.3- Nhà sx cung cấp ống cống đúc sẵn- Công ty  TNHH Đất Việt","submitDate":46238,"status":"","approvedDate":"Đã chấp thuận có điều kiện (12/08/2026)"},{"name":"YL.C02.3- Nhà sx cung cấp vải địa kỹ thuật PTP","submitDate":46240,"status":"","approvedDate":"Chấp thuận có điều kiện"},{"name":"YL.C02.3- Nhà cung cấp Duy Anh cungcấp thép Hòa Phát","submitDate":46247,"status":"","approvedDate":"Chấp thuận có điều kiện"},{"name":"NHÀ THẦU HÀ TÂY","submitDate":"","status":"","approvedDate":""},{"name":"YL.C02.4- Hồ sơ pháp lý, nhân sự BĐH","submitDate":46207,"status":"","approvedDate":"Đã chấp thuận nhân sự BĐH"},{"name":"YL.C02.4- Biện pháp, tiến độ thi công tổng thể","submitDate":46216,"status":"","approvedDate":"Đã chấp thuận"},{"name":"YL.C02.4- Hồ sơ SEMEC cung cấp thép Hòa Phát","submitDate":46207,"status":"","approvedDate":"Đã chấp thuận"},{"name":"YL.C02.4- Công ty Cổ phần Vải địa kỹ thuật Việt Nam sản xuất cung cấp vải địa kỹ thuật","submitDate":46210,"status":"","approvedDate":"Đã chấp thuận"},{"name":"YL.C02.4- Công ty TNHH SX TM thép Đông Anh sản xuất cung cấp lưới thép hàn","submitDate":46216,"status":"","approvedDate":"Đã chấp thuận"},{"name":"YL.C02.4- Công ty TNHH Hoàng Dương cung cấp vật liệu đất đắp nền mỏ tại khu vực Hang Khống, Gốc Ngái thôn Kim Xa- xã Cẩm Lý- Lục Nam- BG của Cty CP xây dựng và thương mại MD Việt Nam","submitDate":46234,"status":"","approvedDate":"Đã chấp thuận"}],"meta":{"generatedAt":"2026-09-05T02:19:36.771Z","author":"________________","reportDate":"05/09/2026"}}</script>
+
+  <script>
+    let dataStore = { contractors: {}, overview: [], documents: [], meta: {} };
+    let charts = [];
+
+    // ==========================
+    // KHỞI TẠO
+    // ==========================
+    (function initReportDate() {
+      const span = document.getElementById('reportDate');
+      if (!span || span.textContent.trim()) return;
+      const t = new Date();
+      const dd = String(t.getDate()).padStart(2,'0');
+      const mm = String(t.getMonth()+1).padStart(2,'0');
+      const yyyy = t.getFullYear();
+      span.textContent = dd + '/' + mm + '/' + yyyy;
+    })();
+
+    document.getElementById('excelFile').addEventListener('change', handleFile, false);
+
+    const embedded = document.getElementById('embedded-data-json');
+    if (embedded && embedded.textContent.trim()) {
+      try {
+        const obj = JSON.parse(embedded.textContent.trim());
+        if (obj && obj.contractors) {
+          dataStore = obj;
+          renderAll();
+          applyEllipsisTooltips();
+        }
+      } catch (e) {
+        console.warn('Không đọc được embedded data:', e);
+      }
+    }
+
+    // ==========================
+    // ĐỌC EXCEL
+    // ==========================
+    function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+
+        const sheetReport  = wb.Sheets['Báo cáo thi công'] || wb.Sheets[wb.SheetNames[0]];
+        const sheetIssues  = wb.Sheets['Vuong mac']        || wb.Sheets[wb.SheetNames[1]];
+        const sheetOverview= wb.Sheets['tổng quan']        || wb.Sheets['Tổng quan'];
+        const sheetDocs    = wb.Sheets['Tiến độ hồ sơ']    || wb.Sheets['Tien do ho so'];
+
+        parseReportSheet(sheetReport);
+        if (sheetIssues)   parseIssuesSheet(sheetIssues);
+        if (sheetOverview) parseOverviewSheet(sheetOverview);
+        if (sheetDocs)     parseDocsSheet(sheetDocs);
+
+        renderAll();
+        applyEllipsisTooltips();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseReportSheet(sheet) {
+      dataStore.contractors = {};
+      if (!sheet) return;
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      let lastContractor = '';
+      let lastPkg = '';
+
+      for (let i = 3; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || r.length === 0) continue;
+
+        let contractor = r[0] ? String(r[0]).trim() : '';
+        if (!contractor) contractor = lastContractor;
+        lastContractor = contractor;
+        if (!contractor) continue;
+
+        let pkg = r[1] ? String(r[1]).trim() : '';
+        if (!pkg) pkg = lastPkg;
+        lastPkg = pkg;
+
+        const item = r[2] ? String(r[2]).trim() : '';
+        if (!item) continue;
+
+        const unit = r[3] ? String(r[3]).trim() : '';
+
+        const contractQty = Number(r[4]) || 0;
+        const prevCum     = Number(r[5]) || 0;
+        const thisWeek    = Number(r[6]) || 0;
+        let   cum         = Number(r[7]) || 0;
+        const note        = r[9] ? String(r[9]).trim() : '';
+
+        if (!cum && (prevCum || thisWeek)) cum = prevCum + thisWeek;
+
+        let pct = 0;
+        if (contractQty > 0 && cum >= 0) pct = (cum / contractQty) * 100;
+
+        if (!dataStore.contractors[contractor]) {
+          dataStore.contractors[contractor] = { reportItems: [], issues: [] };
+        }
+        dataStore.contractors[contractor].reportItems.push({
+          contractor, pkg, item, unit,
+          contractQty, prevCum, thisWeek, cum, pct, note
+        });
+      }
+    }
+
+    function parseIssuesSheet(sheet) {
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      let lastContractor = '';
+
+      Object.keys(dataStore.contractors).forEach(k => dataStore.contractors[k].issues = []);
+
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || r.length === 0) continue;
+
+        let contractor = r[0] ? String(r[0]).trim() : '';
+        if (!contractor) contractor = lastContractor;
+        lastContractor = contractor;
+        if (!contractor) continue;
+
+        const item       = r[1] ? String(r[1]).trim() : '';
+        const issue      = r[2] ? String(r[2]).trim() : '';
+        const proposal   = r[3] ? String(r[3]).trim() : '';
+        const dateRaised = r[4] || '';
+        const status     = r[5] ? String(r[5]).trim() : '';
+        const owner      = r[6] ? String(r[6]).trim() : '';
+        const dueDate    = r[7] || '';
+
+        if (!dataStore.contractors[contractor]) {
+          dataStore.contractors[contractor] = { reportItems: [], issues: [] };
+        }
+        dataStore.contractors[contractor].issues.push({
+          item, issue, proposal, dateRaised, status, owner, dueDate
+        });
+      }
+    }
+
+    function parseOverviewSheet(sheet) {
+      dataStore.overview = [];
+      if (!sheet) return;
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || r.length === 0) continue;
+
+        const contractor = r[0] ? String(r[0]).trim() : '';
+        const pkg        = r[1] ? String(r[1]).trim() : '';
+        if (!contractor && !pkg) continue;
+
+        const contractDays = Number(r[2]) || 0;
+        const startDate    = r[3] || '';
+        const endDate      = r[4] || '';
+        const daysDone     = Number(r[5]) || 0;
+        const daysRemain   = Number(r[6]) || 0;
+        let ratio = 0;
+        if (typeof r[7] === 'number') ratio = r[7];
+        else if (r[7] !== '' && r[7] != null) ratio = Number(r[7]) || 0;
+
+        dataStore.overview.push({
+          contractor, pkg, contractDays,
+          startDate, endDate, daysDone, daysRemain, ratio
+        });
+      }
+    }
+
+    function parseDocsSheet(sheet) {
+      dataStore.documents = [];
+      if (!sheet) return;
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || r.length === 0) continue;
+
+        const name         = r[0] ? String(r[0]).trim() : '';
+        const submitDate   = r[1] || '';
+        const status       = r[2] ? String(r[2]).trim() : '';
+        const approvedDate = r[3] || '';
+
+        if (!name && !status) continue;
+
+        dataStore.documents.push({
+          name, submitDate, status, approvedDate
+        });
+      }
+    }
+
+    // ==========================
+    // TIỆN ÍCH
+    // ==========================
+    function formatExcelDate(value) {
+      if (!value) return '';
+      if (value instanceof Date) {
+        const dd = String(value.getDate()).padStart(2,'0');
+        const mm = String(value.getMonth()+1).padStart(2,'0');
+        const yyyy = value.getFullYear();
+        return dd + '/' + mm + '/' + yyyy;
+      }
+      if (typeof value === 'number') {
+        const d = XLSX.SSF ? XLSX.SSF.parse_date_code(value) : null;
+        if (d) {
+          const dd = String(d.d).padStart(2,'0');
+          const mm = String(d.m).padStart(2,'0');
+          const yyyy = d.y;
+          return dd + '/' + mm + '/' + yyyy;
+        }
+      }
+      if (typeof value === 'string') {
+        const s = value.trim();
+        if (!s) return '';
+        if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(s)) return s;
+        const dt = new Date(s);
+        if (!isNaN(dt.getTime())) {
+          const dd = String(dt.getDate()).padStart(2,'0');
+          const mm = String(dt.getMonth()+1).padStart(2,'0');
+          const yyyy = dt.getFullYear();
+          return dd + '/' + mm + '/' + yyyy;
+        }
+        return s;
+      }
+      return String(value);
+    }
+
+    function formatPercent(value) {
+      const num = typeof value === 'number' ? value : Number(value);
+      if (!isFinite(num)) return '';
+      const pct = num > 1.01 ? num : num * 100;
+      return pct.toFixed(1).replace(/\.0$/,'') + '%';
+    }
+
+    function getIssueTagClass(status) {
+      const s = (status || '').toLowerCase();
+      if (!s) return 'tag-open';
+      if (s.includes('chưa') || s.includes('open')) return 'tag-open';
+      if (s.includes('đang') || s.includes('progress')) return 'tag-progress';
+      return 'tag-closed';
+    }
+
+    function applyEllipsisTooltips(root) {
+      const container = root || document.getElementById('contractor-content');
+      if (!container) return;
+      const cells = container.querySelectorAll('th, td');
+      cells.forEach(cell => {
+        const text = cell.textContent.trim();
+        if (!text) return;
+        if (!cell.title) cell.title = text;
+      });
+    }
+
+    // ==========================
+    // RENDER TABS
+    // ==========================
+    function renderAll() {
+      const tabsEl = document.getElementById('tabs');
+      if (!tabsEl) return;
+      tabsEl.innerHTML = '';
+
+      const overviewTab = document.createElement('button');
+      overviewTab.className = 'tab';
+      overviewTab.textContent = 'Tổng Quan - Hồ sơ';
+      overviewTab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        overviewTab.classList.add('active');
+        renderOverviewTab();
+      });
+      tabsEl.appendChild(overviewTab);
+
+      const contractors = Object.keys(dataStore.contractors || {});
+      contractors.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'tab';
+        btn.textContent = name;
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          btn.classList.add('active');
+          renderContractor(name);
+        });
+        tabsEl.appendChild(btn);
+      });
+
+      if ((dataStore.overview && dataStore.overview.length) ||
+          (dataStore.documents && dataStore.documents.length)) {
+        overviewTab.classList.add('active');
+        renderOverviewTab();
+      } else if (contractors.length) {
+        const firstBtn = tabsEl.querySelectorAll('.tab')[1];
+        if (firstBtn) {
+          firstBtn.classList.add('active');
+          renderContractor(contractors[0]);
+        }
+      } else {
+        const contentEl = document.getElementById('contractor-content');
+        if (contentEl) {
+          contentEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:8px 4px;">Hãy nhập file Excel để xem báo cáo.</p>';
+        }
+      }
+    }
+
+    // ==========================
+    // TỔNG QUAN
+    // ==========================
+    function renderOverviewTab() {
+      const contentEl = document.getElementById('contractor-content');
+      const overview = dataStore.overview || [];
+      const docs = dataStore.documents || [];
+
+      if (!overview.length && !docs.length) {
+        contentEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:8px 4px;">Không có dữ liệu tổng quan. Hãy kiểm tra các sheet "tổng quan" và "Tiến độ hồ sơ" trong file Excel.</p>';
+        return;
+      }
+
+      let avgRatio = 0;
+      if (overview.length) {
+        let sumRatio = 0, countRatio = 0;
+        overview.forEach(o => {
+          if (typeof o.ratio === 'number' && isFinite(o.ratio) && o.ratio > 0) {
+            sumRatio += o.ratio;
+            countRatio++;
+          }
+        });
+        avgRatio = countRatio ? (sumRatio / countRatio) : 0;
+      }
+
+      const docsArr = docs || [];
+      const totalDocs = docsArr.length;
+      let docsDone = 0, docsInProgress = 0, docsPending = 0;
+      docsArr.forEach(d => {
+        const s = (d.status || '').toLowerCase();
+        if (!s) docsPending++;
+        else if (s.includes('hoàn thành')) docsDone++;
+        else if (s.includes('đang') || s.includes('xử lý') || s.includes('xu ly')) docsInProgress++;
+        else docsPending++;
+      });
+
+      let html = '';
+
+      html += '<div class="summary-grid">';
+      html += `
+        <div class="summary-card">
+          <div class="summary-label">Tiến độ hợp đồng</div>
+          <div class="summary-main-value">${overview.length ? formatPercent(avgRatio) : '--'}</div>
+        </div>
+      `;
+      html += `
+        <div class="summary-card">
+          <div class="summary-label">Tiến độ hồ sơ</div>
+          <div class="summary-main-value">
+            ${totalDocs ? (docsDone + '/' + totalDocs + ' hồ sơ hoàn thành') : '--'}
+          </div>
+          <div class="summary-subtext">
+            Đang xử lý: <strong>${docsInProgress || 0}</strong> &nbsp;|&nbsp;
+            Chưa hoàn thành: <strong>${docsPending || 0}</strong>
+          </div>
+        </div>
+      `;
+      html += '</div>';
+
+      if (overview.length) {
+        html += '<h2 style="font-size:14px;margin:12px 4px 6px;">Tổng quan tiến độ hợp đồng</h2>';
+        html += '<div class="table-wrapper"><table class="table-main"><thead><tr>'
+             +   '<th>STT</th>'
+             +   '<th>Nhà thầu</th>'
+             +   '<th>Gói thầu</th>'
+             +   '<th>Tiến độ HĐ (ngày)</th>'
+             +   '<th>Ngày khởi công</th>'
+             +   '<th>Ngày kết thúc</th>'
+             +   '<th>Ngày thực hiện</th>'
+             +   '<th>Ngày còn lại</th>'
+             +   '<th>Tỷ lệ hoàn thành</th>'
+             + '</tr></thead><tbody>';
+
+        overview.forEach((o, idx) => {
+          html += '<tr>'
+               +   '<td>' + (idx + 1) + '</td>'
+               +   '<td>' + (o.contractor || '') + '</td>'
+               +   '<td>' + (o.pkg || '') + '</td>'
+               +   '<td style="text-align:right;">' + (o.contractDays || '') + '</td>'
+               +   '<td>' + formatExcelDate(o.startDate) + '</td>'
+               +   '<td>' + formatExcelDate(o.endDate) + '</td>'
+               +   '<td style="text-align:right;">' + (o.daysDone || '') + '</td>'
+               +   '<td style="text-align:right;">' + (o.daysRemain || '') + '</td>'
+               +   '<td style="text-align:right;">' + (o.ratio ? formatPercent(o.ratio) : '') + '</td>'
+               + '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+      }
+
+      if (docs.length) {
+        html += '<h2 style="font-size:14px;margin:16px 4px 6px;">Tiến độ hồ sơ</h2>';
+        html += '<div class="table-wrapper"><table class="table-main"><thead><tr>'
+             +   '<th>STT</th>'
+             +   '<th>Tên hồ sơ</th>'
+             +   '<th>Ngày trình duyệt</th>'
+             +   '<th>Tình trạng</th>'
+             +   '<th>Ngày phê duyệt</th>'
+             + '</tr></thead><tbody>';
+
+        docs.forEach((d, idx) => {
+          html += '<tr>'
+               +   '<td>' + (idx + 1) + '</td>'
+               +   '<td>' + (d.name || '') + '</td>'
+               +   '<td>' + formatExcelDate(d.submitDate) + '</td>'
+               +   '<td>' + (d.status || '') + '</td>'
+               +   '<td>' + formatExcelDate(d.approvedDate) + '</td>'
+               + '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+      }
+
+      contentEl.innerHTML = html;
+      applyEllipsisTooltips(contentEl);
+    }
+
+    // ==========================
+    // NHÀ THẦU (CHI TIẾT + DETAIL VIEW)
+    // ==========================
+    function renderContractor(name) {
+      const data = dataStore.contractors[name];
+      if (!data) return;
+
+      const contentEl = document.getElementById('contractor-content');
+      const items = data.reportItems || [];
+
+      let totalContract = 0, totalCum = 0;
+      items.forEach(it => { totalContract += it.contractQty || 0; totalCum += it.cum || 0; });
+
+      const avgPct = totalContract > 0 ? (totalCum / totalContract) * 100 : 0;
+
+      const bands = Array(10).fill(0);
+      items.forEach(it => {
+        const p = it.pct || 0;
+        let idx = Math.floor(p / 10);
+        if (idx < 0) idx = 0;
+        if (idx > 9) idx = 9;
+        bands[idx]++;
+      });
+
+      const issues = data.issues || [];
+      const totalIssues = issues.length;
+      let issueOpen = 0, issueProgress = 0, issueClosed = 0;
+      issues.forEach(is => {
+        const cls = getIssueTagClass(is.status);
+        if (cls === 'tag-open') issueOpen++;
+        else if (cls === 'tag-progress') issueProgress++;
+        else issueClosed++;
+      });
+
+      const contractorName = name || 'Nhà thầu';
+
+      const firstRowBands  = bands.slice(0,5);
+      const secondRowBands = bands.slice(5,10);
+
+      let html = '';
+
+      // Khối summary + chart
+      html += '<div class="summary-grid">';
+      html += `
+        <div class="summary-card">
+          <div class="summary-label">Tiến độ trung bình</div>
+          <div class="summary-main-value">${avgPct.toFixed(1)}%</div>
+
+          <div class="card-subtitle">Mức độ hạng mục theo dải %</div>
+          <div class="bands-row">
+            ${firstRowBands.map((cnt, idx) => {
+              const from = idx * 10, to = (idx + 1) * 10;
+              return `<span class="chip">${from}-${to}%: <strong>${cnt}</strong></span>`;
+            }).join(' ')}
+          </div>
+          <div class="bands-row">
+            ${secondRowBands.map((cnt, idx) => {
+              const from = (idx + 5) * 10, to = (idx + 6) * 10;
+              return `<span class="chip">${from}-${to}%: <strong>${cnt}</strong></span>`;
+            }).join(' ')}
+          </div>
+
+          <div class="card-subtitle" style="margin-top:6px;">Tình trạng vướng mắc</div>
+          <div class="summary-main-value" style="font-size:18px;margin-bottom:2px;">${totalIssues}</div>
+          <div class="summary-subtext">
+            <span class="tag tag-open">Chưa xử lý: <strong>${issueOpen}</strong></span>
+            <span class="tag tag-progress">Đang xử lý: <strong>${issueProgress}</strong></span>
+            <span class="tag tag-closed">Đã xong: <strong>${issueClosed}</strong></span>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-label">Biểu đồ tiến độ tổng thể</div>
+          <div class="chart-split">
+            <div class="chart-half"><canvas id="chart-overall"></canvas></div>
+            <div class="chart-half"><canvas id="chart-status"></canvas></div>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color" style="background:#06b6d4;"></span> Đã thực hiện</span>
+            <span class="legend-item"><span class="legend-color" style="background:#ef4444;"></span> Còn lại</span>
+          </div>
+        </div>
+      `;
+      html += '</div>';
+
+      // Chi tiết khối lượng + DETAIL VIEW
+      html += `
+        <div class="details-grid">
+          <div class="card">
+            <div class="card-title">
+              <span>Chi tiết khối lượng - ${contractorName}</span>
+            </div>
+            <div class="filters-row">
+              <label>Gói thầu:
+                <select id="filterPkg"></select>
+              </label>
+              <label>Hạng mục:
+                <select id="filterItem"></select>
+              </label>
+              <label>Dải %:
+                <select id="filterBand">
+                  <option value="">Tất cả</option>
+                  <option value=">=90">≥ 90% (gần hoàn thành)</option>
+                  <option value="<50">&lt; 50% (chậm)</option>
+                </select>
+              </label>
+            </div>
+            <div class="table-wrapper">
+              <table class="table-main">
+                <thead>
+                  <tr>
+                    <th>Gói thầu</th>
+                    <th>Hạng mục</th>
+                    <th>Đơn vị</th>
+                    <th>KL HĐ</th>
+                    <th>Lũy kế trước</th>
+                    <th>Tuần này</th>
+                    <th>Lũy kế đến nay</th>
+                    <th>% hoàn thành</th>
+                    <th>Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-main"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="detail-main-card">
+            <div class="card-title">
+              <span>Chi tiết hạng mục được chọn</span>
+            </div>
+            <div id="detail-main-empty" class="detail-empty">
+              Chưa chọn dòng nào trong bảng khối lượng. Hãy click vào một dòng để xem chi tiết.
+            </div>
+            <div id="detail-main" class="detail-grid" style="display:none;">
+              <div class="detail-row">
+                <div class="detail-label">Gói thầu:</div>
+                <div class="detail-value" id="detailPkg"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Hạng mục:</div>
+                <div class="detail-value" id="detailItem"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Đơn vị:</div>
+                <div class="detail-value" id="detailUnit"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">KL HĐ:</div>
+                <div class="detail-value" id="detailContractQty"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Lũy kế trước:</div>
+                <div class="detail-value" id="detailPrevCum"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Tuần này:</div>
+                <div class="detail-value" id="detailThisWeek"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Lũy kế đến nay:</div>
+                <div class="detail-value" id="detailCum"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">% hoàn thành:</div>
+                <div class="detail-value" id="detailPct"></div>
+              </div>
+              <div class="detail-row" style="grid-column:1 / -1;">
+                <div class="detail-label">Ghi chú:</div>
+                <div class="detail-value" id="detailNote"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Danh sách vướng mắc + DETAIL VIEW
+      html += `
+        <div class="details-grid" style="margin-top:10px;">
+          <div class="card">
+            <div class="card-title">
+              <span>Danh sách vướng mắc</span>
+              <span class="badge"><span class="badge-dot"></span> ${contractorName}</span>
+            </div>
+            <div class="table-wrapper">
+              <table class="table-main">
+                <thead>
+                  <tr>
+                    <th>Hạng mục</th>
+                    <th>Vướng mắc</th>
+                    <th>Kiến nghị</th>
+                    <th>Ngày phát sinh</th>
+                    <th>Trạng thái</th>
+                    <th>Đơn vị phụ trách</th>
+                    <th>Hạn giải quyết</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-issues"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="detail-issue-card">
+            <div class="card-title">
+              <span>Chi tiết vướng mắc được chọn</span>
+            </div>
+            <div id="detail-issue-empty" class="detail-empty">
+              Chưa chọn dòng nào trong bảng vướng mắc. Hãy click vào một dòng để xem chi tiết.
+            </div>
+            <div id="detail-issue" class="detail-grid" style="display:none;">
+              <div class="detail-row">
+                <div class="detail-label">Hạng mục:</div>
+                <div class="detail-value" id="detailIssueItem"></div>
+              </div>
+              <div class="detail-row" style="grid-column:1 / -1;">
+                <div class="detail-label">Vướng mắc:</div>
+                <div class="detail-value" id="detailIssueIssue"></div>
+              </div>
+              <div class="detail-row" style="grid-column:1 / -1;">
+                <div class="detail-label">Kiến nghị:</div>
+                <div class="detail-value" id="detailIssueProposal"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Ngày phát sinh:</div>
+                <div class="detail-value" id="detailIssueDateRaised"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Trạng thái:</div>
+                <div class="detail-value" id="detailIssueStatus"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Đơn vị phụ trách:</div>
+                <div class="detail-value" id="detailIssueOwner"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Hạn giải quyết:</div>
+                <div class="detail-value" id="detailIssueDueDate"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      contentEl.innerHTML = html;
+
+      // ====== FILTER + BẢNG CHI TIẾT KHỐI LƯỢNG ======
+      const contractorsData = dataStore.contractors[name];
+      const pkgs = Array.from(new Set((contractorsData.reportItems || []).map(it => it.pkg || ''))).sort();
+      const pkgSelect = document.getElementById('filterPkg');
+      pkgSelect.innerHTML =
+        '<option value="">Tất cả</option>' +
+        pkgs.map(p => `<option value="${p}">${p || '(Không có)'}</option>`).join('');
+
+      const itemsSet = new Set();
+      (contractorsData.reportItems || []).forEach(it => { if (it.item) itemsSet.add(it.item); });
+      const itemsArr = Array.from(itemsSet).sort();
+      const itemSelect = document.getElementById('filterItem');
+      itemSelect.innerHTML =
+        '<option value="">Tất cả</option>' +
+        itemsArr.map(p => `<option value="${p}">${p}</option>`).join('');
+
+      let selectedMainRow = null;
+
+      function updateMainDetail(it) {
+        document.getElementById('detail-main-empty').style.display = 'none';
+        document.getElementById('detail-main').style.display = 'grid';
+
+        document.getElementById('detailPkg').textContent          = it.pkg || '';
+        document.getElementById('detailItem').textContent         = it.item || '';
+        document.getElementById('detailUnit').textContent         = it.unit || '';
+        document.getElementById('detailContractQty').textContent  = (it.contractQty || 0).toLocaleString('vi-VN');
+        document.getElementById('detailPrevCum').textContent      = (it.prevCum || 0).toLocaleString('vi-VN');
+        document.getElementById('detailThisWeek').textContent     = (it.thisWeek || 0).toLocaleString('vi-VN');
+        document.getElementById('detailCum').textContent          = (it.cum || 0).toLocaleString('vi-VN');
+        document.getElementById('detailPct').textContent          = (it.pct || 0).toFixed(1) + '%';
+        document.getElementById('detailNote').textContent         = it.note || '';
+      }
+
+      function renderTable() {
+        const pkgFilter  = pkgSelect.value;
+        const itemFilter = itemSelect.value;
+        const bandFilter = document.getElementById('filterBand').value;
+
+        const tbody = document.getElementById('tbody-main');
+        tbody.innerHTML = '';
+        selectedMainRow = null;
+        document.getElementById('detail-main-empty').style.display = 'block';
+        document.getElementById('detail-main').style.display = 'none';
+
+        (contractorsData.reportItems || []).forEach(it => {
+          if (pkgFilter && it.pkg !== pkgFilter) return;
+          if (itemFilter && it.item !== itemFilter) return;
+          if (bandFilter === '>=90' && (it.pct || 0) < 90) return;
+          if (bandFilter === '<50' && (it.pct || 0) >= 50) return;
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${it.pkg}</td>
+            <td>${it.item}</td>
+            <td>${it.unit}</td>
+            <td>${(it.contractQty || 0).toLocaleString('vi-VN')}</td>
+            <td>${(it.prevCum || 0).toLocaleString('vi-VN')}</td>
+            <td>${(it.thisWeek || 0).toLocaleString('vi-VN')}</td>
+            <td>${(it.cum || 0).toLocaleString('vi-VN')}</td>
+            <td>${(it.pct || 0).toFixed(1)}%</td>
+            <td><div class="note-cell">${it.note || ''}</div></td>
+          `;
+
+          tr.addEventListener('click', () => {
+            if (selectedMainRow) selectedMainRow.classList.remove('row-selected');
+            tr.classList.add('row-selected');
+            selectedMainRow = tr;
+            updateMainDetail(it);
+          });
+
+          tbody.appendChild(tr);
+        });
+        applyEllipsisTooltips(tbody);
+      }
+
+      renderTable();
+
+      pkgSelect.addEventListener('change', renderTable);
+      itemSelect.addEventListener('change', renderTable);
+      document.getElementById('filterBand').addEventListener('change', renderTable);
+
+      // ====== BẢNG VƯỚNG MẮC + DETAIL VIEW ======
+      const issuesTbody = document.getElementById('tbody-issues');
+      issuesTbody.innerHTML = '';
+
+      let selectedIssueRow = null;
+
+      function updateIssueDetail(is) {
+        document.getElementById('detail-issue-empty').style.display = 'none';
+        document.getElementById('detail-issue').style.display = 'grid';
+
+        document.getElementById('detailIssueItem').textContent       = is.item || '';
+        document.getElementById('detailIssueIssue').textContent      = is.issue || '';
+        document.getElementById('detailIssueProposal').textContent   = is.proposal || '';
+        document.getElementById('detailIssueDateRaised').textContent = is.dateRaised || '';
+        document.getElementById('detailIssueStatus').textContent     = is.status || '';
+        document.getElementById('detailIssueOwner').textContent      = is.owner || '';
+        document.getElementById('detailIssueDueDate').textContent    = is.dueDate || '';
+      }
+
+      (data.issues || []).forEach(is => {
+        const cls = getIssueTagClass(is.status);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${is.item || ''}</td>
+          <td>${is.issue || ''}</td>
+          <td>${is.proposal || ''}</td>
+          <td>${is.dateRaised || ''}</td>
+          <td><span class="tag ${cls}">${is.status || ''}</span></td>
+          <td>${is.owner || ''}</td>
+          <td>${is.dueDate || ''}</td>
+        `;
+        tr.addEventListener('click', () => {
+          if (selectedIssueRow) selectedIssueRow.classList.remove('row-selected');
+          tr.classList.add('row-selected');
+          selectedIssueRow = tr;
+          updateIssueDetail(is);
+        });
+        issuesTbody.appendChild(tr);
+      });
+
+      // ====== CHARTS ======
+      if (charts && charts.length) {
+        charts.forEach(ch => ch.destroy());
+        charts = [];
+      }
+
+      const ctxOverall = document.getElementById('chart-overall');
+      const ctxStatus  = document.getElementById('chart-status');
+
+      if (ctxOverall) {
+        const done = totalCum;
+        const remainVal = Math.max(0, totalContract - totalCum);
+        const doughnutChart = new Chart(ctxOverall, {
+          type: 'doughnut',
+          data: {
+            labels: ['Đã thực hiện', 'Còn lại'],
+            datasets: [{
+              data: [done, remainVal],
+              backgroundColor: ['#06b6d4', '#ef4444'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            plugins: {
+              legend: { display:false },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    const label = ctx.label || '';
+                    const value = ctx.parsed || 0;
+                    return label + ': ' + value.toLocaleString('vi-VN');
+                  }
+                }
+              }
+            },
+            cutout: '65%'
+          }
+        });
+        charts.push(doughnutChart);
+      }
+
+      if (ctxStatus) {
+        const labels = [];
+        for (let i = 0; i < 10; i++) labels.push((i*10) + '-' + ((i+1)*10) + '%');
+        const barChart = new Chart(ctxStatus, {
+          type: 'bar',
+          data: { labels, datasets: [{ data: bands, backgroundColor:'#38bdf8', borderWidth:0 }] },
+          options: {
+            plugins: {
+              legend: { display:false },
+              tooltip: {
+                callbacks: { label: ctx => ctx.parsed.y + ' hạng mục' }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { font: { size:9 } },
+                grid: { display:false }
+              },
+              y: {
+                beginAtZero:true,
+                precision:0,
+                grid: { color:'rgba(148,163,184,0.35)' },
+                ticks: { stepSize:1 }
+              }
+            }
+          }
+        });
+        charts.push(barChart);
+      }
+
+      applyEllipsisTooltips();
+    }
+
+    // ==========================
+    // EXPORT & THEME
+    // ==========================
+    document.getElementById('btnExportExcel').addEventListener('click', () => {
+      const contractors = dataStore.contractors;
+      if (!Object.keys(contractors || {}).length) {
+        alert('Chưa có dữ liệu. Hãy nhập file Excel trước.');
+        return;
+      }
+
+      const reportRows = [];
+      const issueRows  = [];
+
+      Object.values(contractors).forEach(ct => {
+        (ct.reportItems || []).forEach(it => {
+          reportRows.push({
+            'Nhà thầu': it.contractor,
+            'Gói thầu': it.pkg,
+            'Hạng mục': it.item,
+            'Đơn vị': it.unit,
+            'KL HĐ': it.contractQty,
+            'Lũy kế trước': it.prevCum,
+            'Tuần này': it.thisWeek,
+            'Lũy kế đến nay': it.cum,
+            '% hoàn thành': it.pct,
+            'Ghi chú': it.note
+          });
+        });
+
+        (ct.issues || []).forEach(is => {
+          issueRows.push({
+            'Nhà thầu': ct.reportItems?.[0]?.contractor || '',
+            'Hạng mục': is.item,
+            'Vướng mắc': is.issue,
+            'Kiến nghị': is.proposal,
+            'Ngày phát sinh': is.dateRaised,
+            'Trạng thái': is.status,
+            'Đơn vị phụ trách': is.owner,
+            'Hạn giải quyết': is.dueDate
+          });
+        });
+      });
+
+      const wb = XLSX.utils.book_new();
+      const wsReport = XLSX.utils.json_to_sheet(reportRows);
+      XLSX.utils.book_append_sheet(wb, wsReport, 'Bao_cao_thi_cong');
+      const wsIssue = XLSX.utils.json_to_sheet(issueRows);
+      XLSX.utils.book_append_sheet(wb, wsIssue, 'Vuong_mac');
+
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2,'0');
+      const mm = String(today.getMonth()+1).padStart(2,'0');
+      const yyyy = today.getFullYear();
+      XLSX.writeFile(wb, `Bao_cao_khoi_luong_${dd}${mm}${yyyy}.xlsx`);
+    });
+
+    document.getElementById('btnExportPdf').addEventListener('click', () => {
+      window.print();
+    });
+
+    document.getElementById('btnExportHtml').addEventListener('click', () => {
+      const authorEl = document.getElementById('reportAuthor');
+      const dateEl   = document.getElementById('reportDate');
+      dataStore.meta = {
+        generatedAt: new Date().toISOString(),
+        author: authorEl ? authorEl.textContent.trim() : '',
+        reportDate: dateEl ? dateEl.textContent.trim() : ''
+      };
+
+      const scriptTag = document.getElementById('embedded-data-json');
+      if (scriptTag) {
+        scriptTag.textContent = JSON.stringify(dataStore);
+      }
+
+      const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2,'0');
+      const mm = String(today.getMonth()+1).padStart(2,'0');
+      const yyyy = today.getFullYear();
+      a.download = `Bao_cao_khoi_luong_static_${dd}${mm}${yyyy}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btnTheme').addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+    });
+  </script>
+
+
+</body></html>
